@@ -1,8 +1,30 @@
 ## upcoming release
 ENHANCEMENTS:
 * add `h323_disable`, `mgcp_disable`, `rtsp_disable`, `sccp_disable` and `sip_disable` arguments in `junos_security` resource (Fixes #95) Thanks [@a-d-v](https://github.com/a-d-v)
+* add `default_address_selection` and `no_multicast_echo` arguments in `junos_system` resource (Fixes #97) Thanks [@a-d-v](https://github.com/a-d-v)
+* add `junos_security_screen` resource (Fixes parts of [#92](https://github.com/jeremmfr/terraform-provider-junos/issues/92))
+* add `junos_security_screen_whitelist` resource
+* add `advance_policy_based_routing_profile`, `application_tracking`, `description`, `reverse_reroute`, `screen`, `source_identity_log` and `tcp_rst` arguments in `junos_security_zone` resource (Fixes parts of [#92](https://github.com/jeremmfr/terraform-provider-junos/issues/92))
+* add `junos_security_utm_custom_url_category` resource (Fixes #108) Thanks [@a-d-v](https://github.com/a-d-v)
 
 BUG FIXES:
+* clean code: remove useless else when read a empty config
+* fix typo in name of `accounting_timeout` argument in `junos_system_radius_server` resource. **Update your config for new version of this argument**
+* fix warnings received from the device generate failures on resource actions. Now, received warnings are send to terraform under warnings format (Fixes #105)
+* fix IP/Mask validation for point to point IPs
+
+## 1.12.3 (February 5, 2021)
+BUG FIXES:
+* fix crash when `bind_interface` change in `junos_security_ipsec_vpn` resource
+
+## 1.12.2 (February 3, 2021)
+BUG FIXES:
+* allow the name length of some objects > 32 for part of the resources (Fixes [#101](https://github.com/jeremmfr/terraform-provider-junos/issues/101))
+
+## 1.12.1 (February 1, 2021)
+BUG FIXES:
+* possible mismatch for routing_instance in junos_interface_logical resource (Fixes [#98](https://github.com/jeremmfr/terraform-provider-junos/issues/98))
+* can't create empty junos_policyoptions_prefix_list resource (Fixes [#99](https://github.com/jeremmfr/terraform-provider-junos/issues/99))
 
 ## 1.12.0 (January 20, 2021)
 FEATURES:

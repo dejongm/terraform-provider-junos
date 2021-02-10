@@ -29,6 +29,16 @@ func logFile(message string, file string) {
 
 	log.Printf("%s", message)
 }
+
+func appendDiagWarns(diags *diag.Diagnostics, warns []error) {
+	for _, w := range warns {
+		*diags = append(*diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  w.Error(),
+		})
+	}
+}
+
 func validateIPMaskFunc() schema.SchemaValidateDiagFunc {
 	return func(i interface{}, path cty.Path) diag.Diagnostics {
 		var diags diag.Diagnostics
@@ -54,8 +64,8 @@ func validateIPwithMask(ip string) error {
 	if err != nil || ipnet == nil {
 		return fmt.Errorf("%v is not a valid IP/mask", ip)
 	}
-	if (strings.Contains(ip, ":") && strings.Contains(ip, "/128")) ||
-		(!strings.Contains(ip, ":") && strings.Contains(ip, "/32")) {
+	if (strings.Contains(ip, ":") && (strings.Contains(ip, "/128") || strings.Contains(ip, "/127"))) ||
+		(!strings.Contains(ip, ":") && (strings.Contains(ip, "/32") || strings.Contains(ip, "/31"))) {
 		return nil
 	}
 	if ip == ipnet.String() {
@@ -80,11 +90,11 @@ func validateCIDRNetwork(network string) error {
 	return nil
 }
 
-func validateNameObjectJunos(exclude []string) schema.SchemaValidateDiagFunc {
+func validateNameObjectJunos(exclude []string, length int) schema.SchemaValidateDiagFunc {
 	return func(i interface{}, path cty.Path) diag.Diagnostics {
 		var diags diag.Diagnostics
 		v := i.(string)
-		if strings.Count(v, "") > 32 {
+		if strings.Count(v, "") > length {
 			diags = append(diags, diag.Diagnostic{
 				Severity:      diag.Error,
 				Summary:       fmt.Sprintf("%s invalid name (too long)", i),
