@@ -68,15 +68,17 @@ func resourceSwitchOptionsCreate(ctx context.Context, d *schema.ResourceData, m 
 
 		return diag.FromErr(err)
 	}
-	if err := sess.commitConf("create resource junos_switch_options", jnprSess); err != nil {
-		sess.configClear(jnprSess)
+	var diagWarns diag.Diagnostics
+        warns, err := sess.commitConf("create resource junos_switch_options", jnprSess)
+        appendDiagWarns(&diagWarns, warns)
+        if err != nil {
+                sess.configClear(jnprSess)
 
-		return diag.FromErr(err)
-	}
+                return append(diagWarns, diag.FromErr(err)...)
+        }
+        d.SetId("routing_options")
 
-	d.SetId("switch_options")
-
-	return resourceSwitchOptionsReadWJnprSess(d, m, jnprSess)
+        return append(diagWarns, resourceRoutingOptionsReadWJnprSess(d, m, jnprSess)...)
 }
 func resourceSwitchOptionsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	sess := m.(*Session)
@@ -119,14 +121,17 @@ func resourceSwitchOptionsUpdate(ctx context.Context, d *schema.ResourceData, m 
 
 		return diag.FromErr(err)
 	}
-	if err := sess.commitConf("update resource junos_switch_options", jnprSess); err != nil {
-		sess.configClear(jnprSess)
+	var diagWarns diag.Diagnostics
+        warns, err := sess.commitConf("update resource junos_switch_options", jnprSess)
+        appendDiagWarns(&diagWarns, warns)
+        if err != nil {
+                sess.configClear(jnprSess)
 
-		return diag.FromErr(err)
-	}
-	d.Partial(false)
+                return append(diagWarns, diag.FromErr(err)...)
+        }
+        d.SetId("routing_options")
 
-	return resourceSwitchOptionsReadWJnprSess(d, m, jnprSess)
+        return append(diagWarns, resourceRoutingOptionsReadWJnprSess(d, m, jnprSess)...)
 }
 func resourceSwitchOptionsDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	return nil
