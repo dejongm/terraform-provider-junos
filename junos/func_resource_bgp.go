@@ -41,6 +41,7 @@ type bgpOptions struct {
 	authenticationKey            string
 	authenticationKeyChain       string
 	bgpType                      string // group only
+	cluster                      string
 	localAddress                 string
 	localAs                      string
 	localInterface               string
@@ -91,6 +92,7 @@ func delBgpOpts(d *schema.ResourceData, typebgp string, m interface{}, jnprSess 
 		delPrefix+"authentication-key",
 		delPrefix+"authentication-key-chain",
 		delPrefix+"bfd-liveness-detection",
+		delPrefix+"cluster",
 		delPrefix+"damping",
 		delPrefix+"export",
 		delPrefix+"family evpn",
@@ -151,6 +153,9 @@ func setBgpOptsSimple(setPrefix string, d *schema.ResourceData, m interface{}, j
 	}
 	if d.Get("authentication_key_chain").(string) != "" {
 		configSet = append(configSet, setPrefix+"authentication-key-chain "+d.Get("authentication_key_chain").(string))
+	}
+	if d.Get("cluster").(string) != "" {
+		configSet = append(configSet, setPrefix+"cluster "+d.Get("cluster").(string))
 	}
 	if d.Get("damping").(bool) {
 		configSet = append(configSet, setPrefix+"damping")
@@ -283,6 +288,9 @@ func readBgpOptsSimple(item string, confRead *bgpOptions) error {
 	}
 	if strings.HasPrefix(item, "authentication-key-chain ") {
 		confRead.authenticationKeyChain = strings.TrimPrefix(item, "authentication-key-chain ")
+	}
+	if strings.HasPrefix(item, "cluster ") {
+		confRead.localAddress = strings.TrimPrefix(item, "cluster ")
 	}
 	if item == "damping" {
 		confRead.damping = true
