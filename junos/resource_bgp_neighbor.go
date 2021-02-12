@@ -439,11 +439,13 @@ func resourceBgpNeighbor() *schema.Resource {
 			"multipath": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				ConflictsWith: []string{"multipath_options"},
 			},
                         "multipath_options": {
                                 Type:     schema.TypeList,
                                 Optional: true,
 				MaxItems: 1,
+				ConflictsWith: []string{"multipath"},
                                 Elem: &schema.Resource{
                                         Schema: map[string]*schema.Schema{
                                                 "disable": {
@@ -789,7 +791,6 @@ func readBgpNeighbor(ip, instance, group string, m interface{}, jnprSess *Netcon
 				}
                         case strings.HasPrefix(itemTrim, "multipath "):
                                 confRead.multipath_options, err = readBgpOptsMultipath(itemTrim, confRead.multipath_options)
-                                confRead.multipath = true
                                 if err != nil {
                                         return confRead, err
                                 }
