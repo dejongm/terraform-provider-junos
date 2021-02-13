@@ -443,32 +443,31 @@ func resourceBgpGroup() *schema.Resource {
 				Optional: true,
 			},
 			"multipath": {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:          schema.TypeBool,
+				Optional:      true,
 				ConflictsWith: []string{"multipath_options"},
 			},
 			"multipath_options": {
-                                Type:     schema.TypeList,
-                                Optional: true,
-				MaxItems: 1,
+				Type:          schema.TypeList,
+				Optional:      true,
+				MaxItems:      1,
 				ConflictsWith: []string{"multipath"},
-                                Elem: &schema.Resource{
-                                        Schema: map[string]*schema.Schema{
-                                                "disable": {
-                                                        Type:     schema.TypeBool,
-                                                        Optional: true,
-                                                },
-                                                "allow_protection": {
-                                                        Type:          schema.TypeBool,
-                                                        Optional:      true,
-                                                },
-                                                "multiple_as": {
-                                                        Type:          schema.TypeBool,
-                                                        Optional:      true,
-                                                },
-                                        },
-                                },
-
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"disable": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"allow_protection": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"multiple_as": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
 			},
 			"out_delay": {
 				Type:         schema.TypeInt,
@@ -787,7 +786,7 @@ func readBgpGroup(bgpGroup, instance string, m interface{}, jnprSess *NetconfObj
 					return confRead, err
 				}
 			case strings.HasPrefix(itemTrim, "multipath "):
-				confRead.multipath_options, err = readBgpOptsMultipath(itemTrim, confRead.multipath_options)
+				confRead.multipathOptions, err = readBgpOptsMultipath(itemTrim, confRead.multipathOptions)
 				if err != nil {
 					return confRead, err
 				}
@@ -930,7 +929,7 @@ func fillBgpGroupData(d *schema.ResourceData, bgpGroupOptions bgpOptions) {
 	if tfErr := d.Set("multipath", bgpGroupOptions.multipath); tfErr != nil {
 		panic(tfErr)
 	}
-	if tfErr := d.Set("multipath_options", bgpGroupOptions.multipath_options); tfErr != nil {
+	if tfErr := d.Set("multipath_options", bgpGroupOptions.multipathOptions); tfErr != nil {
 		panic(tfErr)
 	}
 	if tfErr := d.Set("no_advertise_peer_as", bgpGroupOptions.noAdvertisePeerAs); tfErr != nil {

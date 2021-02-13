@@ -437,33 +437,32 @@ func resourceBgpNeighbor() *schema.Resource {
 				Optional: true,
 			},
 			"multipath": {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:          schema.TypeBool,
+				Optional:      true,
 				ConflictsWith: []string{"multipath_options"},
 			},
-                        "multipath_options": {
-                                Type:     schema.TypeList,
-                                Optional: true,
-				MaxItems: 1,
+			"multipath_options": {
+				Type:          schema.TypeList,
+				Optional:      true,
+				MaxItems:      1,
 				ConflictsWith: []string{"multipath"},
-                                Elem: &schema.Resource{
-                                        Schema: map[string]*schema.Schema{
-                                                "disable": {
-                                                        Type:     schema.TypeBool,
-                                                        Optional: true,
-                                                },
-                                                "allow_protection": {
-                                                        Type:          schema.TypeBool,
-                                                        Optional:      true,
-                                                },
-                                                "multiple_as": {
-                                                        Type:          schema.TypeBool,
-                                                        Optional:      true,
-                                                },
-                                        },
-                                },
-
-                        },
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"disable": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"allow_protection": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"multiple_as": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
+			},
 
 			"out_delay": {
 				Type:         schema.TypeInt,
@@ -789,11 +788,11 @@ func readBgpNeighbor(ip, instance, group string, m interface{}, jnprSess *Netcon
 				if err != nil {
 					return confRead, err
 				}
-                        case strings.HasPrefix(itemTrim, "multipath "):
-                                confRead.multipath_options, err = readBgpOptsMultipath(itemTrim, confRead.multipath_options)
-                                if err != nil {
-                                        return confRead, err
-                                }
+			case strings.HasPrefix(itemTrim, "multipath "):
+				confRead.multipathOptions, err = readBgpOptsMultipath(itemTrim, confRead.multipathOptions)
+				if err != nil {
+					return confRead, err
+				}
 
 			default:
 				err = readBgpOptsSimple(itemTrim, &confRead)
@@ -941,7 +940,7 @@ func fillBgpNeighborData(d *schema.ResourceData, bgpNeighborOptions bgpOptions) 
 	if tfErr := d.Set("multipath", bgpNeighborOptions.multipath); tfErr != nil {
 		panic(tfErr)
 	}
-	if tfErr := d.Set("multipath_options", bgpNeighborOptions.multipath_options); tfErr != nil {
+	if tfErr := d.Set("multipathOptions", bgpNeighborOptions.multipathOptions); tfErr != nil {
 		panic(tfErr)
 	}
 	if tfErr := d.Set("no_advertise_peer_as", bgpNeighborOptions.noAdvertisePeerAs); tfErr != nil {

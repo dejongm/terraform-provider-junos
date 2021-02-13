@@ -55,7 +55,7 @@ type bgpOptions struct {
 	familyInet                   []map[string]interface{}
 	familyInet6                  []map[string]interface{}
 	gracefulRestart              []map[string]interface{}
-	multipath_options            []map[string]interface{}
+	multipathOptions             []map[string]interface{}
 }
 
 func delBgpOpts(d *schema.ResourceData, typebgp string, m interface{}, jnprSess *NetconfObject) error {
@@ -821,6 +821,7 @@ func readBgpOptsMultipath(item string, grOpts []map[string]interface{}) ([]map[s
 			grRead[k] = v
 		}
 	}
+	var err error
 	if itemTrim == disableW {
 		grRead["disable"] = true
 	}
@@ -830,5 +831,10 @@ func readBgpOptsMultipath(item string, grOpts []map[string]interface{}) ([]map[s
 	if itemTrim == "multiple-as" {
 		grRead["multiple_as"] = true
 	}
+	if err != nil {
+		return []map[string]interface{}{grRead},
+			fmt.Errorf("something went wrong : %w", err)
+	}
+
 	return []map[string]interface{}{grRead}, nil
 }
