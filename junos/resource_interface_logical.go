@@ -18,6 +18,7 @@ type interfaceLogicalOptions struct {
 	description     string
 	routingInstance string
 	securityZone    string
+	familyEthernetSwitching      []map[string]interface{}
 	familyInet      []map[string]interface{}
 	familyInet6     []map[string]interface{}
 }
@@ -53,6 +54,34 @@ func resourceInterfaceLogical() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"family_ethernet_switching": {
+				Type:	schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"vlan": {
+							Type:	schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"members": {
+										Type:		schema.TypeList,
+										Required:	true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+								},
+							},
+						},
+						"interface_mode": {
+							Type:		schema.TypeString,
+							Optional:	true,
+							ValidateFunc: validation.StringInSlice([]string{"access", "trunk"}, false),
+						},
+					},
+				},
 			},
 			"family_inet": {
 				Type:     schema.TypeList,
@@ -723,6 +752,24 @@ func setInterfaceLogical(d *schema.ResourceData, m interface{}, jnprSess *Netcon
 	if d.Get("description").(string) != "" {
 		configSet = append(configSet, setPrefix+"description \""+d.Get("description").(string)+"\"")
 	}
+	for _, v := range d.Get("family_ethernet_switching").([]interface{}) {
+		configSet = append(configSet, setPrefix+"family ethernet-switching")
+		if v != nil {
+			familyEthernetSwitching := v.(map[string]interface{})
+			for _, v2 := range familyEthernetSwitching["vlan"].([]interface{}) {
+				if v2 != nil {
+					vlanParams := v2.(map[string]interface{})
+					for _, vlanMember := range vlanParams["members"].([]interface{}) {
+						configSet = append(configSet, setPrefix+"family ethernet-switching vlan members "+vlanMember.(string))
+					}
+				}
+			}
+			if familyEthernetSwitching["interface_mode"].(string) != "" {
+				configSet = append(configSet, setPrefix+"family ethernet-switching interface-mode "+
+					familyEthernetSwitching["interface_mode"].(string))
+			}
+		}
+	}
 	for _, v := range d.Get("family_inet").([]interface{}) {
 		configSet = append(configSet, setPrefix+"family inet")
 		if v != nil {
@@ -844,6 +891,32 @@ func readInterfaceLogical(interFace string, m interface{}, jnprSess *NetconfObje
 			switch {
 			case strings.HasPrefix(itemTrim, "description "):
 				confRead.description = strings.Trim(strings.TrimPrefix(itemTrim, "description "), "\"")
+			case strings.HasPrefix(itemTrim, "family ethernet-switching"):
+				if len(confRead.familyEthernetSwitching) == 0 {
+					confRead.familyEthernetSwitching = append(confRead.familyEthernetSwitching, map[string]interface{}{
+						"vlan":			make([]map[string]interface{}, 0),
+						"interface-mode":	"",
+
+					})
+				}
+				switch {
+				case strings.HasPrefix(itemTrim, "interface-mode "):
+					confRead.familyEthernetSwitching[0]["interface_mode"] = strings.TrimPrefix(itemTrim, "family ethernet-switching interface-mode ")
+				case strings.HasPrefix(itemTrim, "vlan "):
+					if len(confRead.familyEthernetSwitching[0]["vlan"].([]map[string]interface{})) == 0 {
+						confRead.familyEthernetSwitching[0]["vlan"] = append(
+							confRead.familyEthernetSwitching[0]["vlan"].([]map[string]interface{}), map[string]interface{}{
+								"members": []string{},
+							})
+					}
+					switch {
+					case strings.HasPrefix(itemTrim, "members ") :
+						confRead.familyEthernetSwitching[0]["vlan"].([]map[string]interface{})[0]["members"] = append(
+							[]interface{}{strings.TrimPrefix(itemTrim, "family ethernet-switching vlan members ")},
+							confRead.familyEthernetSwitching[0]["vlan"].([]map[string]interface{})[0]["members"])
+					}
+				}
+
 			case strings.HasPrefix(itemTrim, "family inet6"):
 				if len(confRead.familyInet6) == 0 {
 					confRead.familyInet6 = append(confRead.familyInet6, map[string]interface{}{
