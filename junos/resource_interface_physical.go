@@ -64,7 +64,7 @@ func resourceInterfacePhysical() *schema.Resource {
 			"ae_lacp_system_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^([\\d\\w]{2}:){6}[\\d\\w]{2}$`),"incorrrect format or length"),
+				ValidateFunc: IsMACAddress,
 			},
 			"ae_link_speed": {
 				Type:         schema.TypeString,
