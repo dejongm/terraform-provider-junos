@@ -495,8 +495,6 @@ func setInterfacePhysical(d *schema.ResourceData, m interface{}, jnprSess *Netco
 		}
 		configSet = append(configSet, "set chassis aggregated-devices ethernet device-count "+aggregatedCount)
 	} else if d.Get("ether802_3ad").(string) != "" {
-		configSet = append(configSet, setPrefix+"ether-options 802.3ad "+
-			d.Get("ether802_3ad").(string))
 		configSet = append(configSet, setPrefix+"gigether-options 802.3ad "+
 			d.Get("ether802_3ad").(string))
 		oldAE := "ae-1"
@@ -599,8 +597,6 @@ func readInterfacePhysical(interFace string, m interface{}, jnprSess *NetconfObj
 				if err := readIntEsi(&confRead, itemTrim); err != nil {
 					return confRead, err
 				}
-			case strings.HasPrefix(itemTrim, "ether-options 802.3ad "):
-				confRead.v8023ad = strings.TrimPrefix(itemTrim, "ether-options 802.3ad ")
 			case strings.HasPrefix(itemTrim, "gigether-options 802.3ad "):
 				confRead.v8023ad = strings.TrimPrefix(itemTrim, "gigether-options 802.3ad ")
 			case strings.HasPrefix(itemTrim, "native-vlan-id"):
@@ -751,7 +747,6 @@ func delInterfacePhysicalOpts(d *schema.ResourceData, m interface{}, jnprSess *N
 	delPrefix := "delete interfaces " + d.Get("name").(string) + " "
 	configSet = append(configSet,
 		delPrefix+"aggregated-ether-options",
-		delPrefix+"ether-options 802.3ad",
 		delPrefix+"esi",
 		delPrefix+"gigether-options 802.3ad",
 		delPrefix+"native-vlan-id",
