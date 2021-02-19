@@ -24,7 +24,6 @@ type interfacePhysicalOptions struct {
 	description    string
 	v8023ad        string
 	vlanMembers    []string
-	Esi            []map[string]interface{}
 }
 
 func resourceInterfacePhysical() *schema.Resource {
@@ -64,7 +63,7 @@ func resourceInterfacePhysical() *schema.Resource {
 			"ae_lacp_system_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				ValidateDiagFunc: validateByteString(6),
+				ValidateFunc: validation.StringMatch(regexp.MustCompile(`^([\\d\\w]{2}:){6}[\\d\\w]{2}$`),"incorrrect format or length"),
 			},
 			"ae_link_speed": {
 				Type:         schema.TypeString,
@@ -78,41 +77,6 @@ func resourceInterfacePhysical() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-			},
-			"esi": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"mode": {
-							Type:         schema.TypeString,
-							Required:     true,
-							ValidateFunc: validation.StringInSlice([]string{"all-active", "single-active"}, false),
-						},
-						"auto_derive_lacp": {
-							Type:          schema.TypeBool,
-							Optional:      true,
-							ConflictsWith: []string{"esi.0.identifier"},
-						},
-						"df_election_type": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: validation.StringInSlice([]string{"mod", "preference"}, false),
-						},
-						"identifier": {
-							Type:             schema.TypeString,
-							Optional:         true,
-							ConflictsWith:    []string{"esi.0.auto_derive_lacp"},
-							ValidateDiagFunc: validateByteString(10),
-						},
-						"source_bmac": {
-							Type:             schema.TypeString,
-							Optional:         true,
-							ValidateDiagFunc: validateByteString(6),
-						},
-					},
-				},
 			},
 			"ether802_3ad": {
 				Type:     schema.TypeString,
@@ -523,10 +487,6 @@ func setInterfacePhysical(d *schema.ResourceData, m interface{}, jnprSess *Netco
 		configSet = append(configSet, setPrefix+"vlan-tagging")
 	}
 
-	if err := setIntEsi(setPrefix, d.Get("esi").([]interface{}), m, jnprSess); err != nil {
-		return err
-	}
-
 	if err := sess.configSet(configSet, jnprSess); err != nil {
 		return err
 	}
@@ -571,11 +531,6 @@ func readInterfacePhysical(interFace string, m interface{}, jnprSess *NetconfObj
 
 			case strings.HasPrefix(itemTrim, "ether-options 802.3ad "):
 				confRead.v8023ad = strings.TrimPrefix(itemTrim, "ether-options 802.3ad ")
-			case strings.HasPrefix(itemTrim, "esi "):
-				confRead.Esi, err = readIntEsi(itemTrim, confRead.Esi)
-				if err != nil {
-					return confRead, err
-				}
 			case strings.HasPrefix(itemTrim, "gigether-options 802.3ad "):
 				confRead.v8023ad = strings.TrimPrefix(itemTrim, "gigether-options 802.3ad ")
 			case strings.HasPrefix(itemTrim, "native-vlan-id"):
@@ -695,7 +650,6 @@ func delInterfacePhysicalOpts(d *schema.ResourceData, m interface{}, jnprSess *N
 	delPrefix := "delete interfaces " + d.Get("name").(string) + " "
 	configSet = append(configSet,
 		delPrefix+"aggregated-ether-options",
-		delPrefix+"esi",
 		delPrefix+"ether-options 802.3ad",
 		delPrefix+"gigether-options 802.3ad",
 		delPrefix+"native-vlan-id",
@@ -721,9 +675,6 @@ func fillInterfacePhysicalData(d *schema.ResourceData, interfaceOpt interfacePhy
 		panic(tfErr)
 	}
 	if tfErr := d.Set("ae_minimum_links", interfaceOpt.aeMinLink); tfErr != nil {
-		panic(tfErr)
-	}
-	if tfErr := d.Set("esi", interfaceOpt.Esi); tfErr != nil {
 		panic(tfErr)
 	}
 	if tfErr := d.Set("description", interfaceOpt.description); tfErr != nil {
