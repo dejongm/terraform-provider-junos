@@ -19,7 +19,6 @@ type interfacePhysicalOptions struct {
 	aeMinLink      int
 	vlanNative     int
 	aeLacp         string
-	aeLacpSystemID string
 	aeLinkSpeed    string
 	description    string
 	v8023ad        string
@@ -60,11 +59,6 @@ func resourceInterfacePhysical() *schema.Resource {
 				Optional:     true,
 				Default:      "",
 				ValidateFunc: validation.StringInSlice([]string{"active", "passive"}, false),
-			},
-			"ae_lacp_system_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ValidateFunc: validation.IsMACAddress,
 			},
 			"ae_link_speed": {
 				Type:         schema.TypeString,
