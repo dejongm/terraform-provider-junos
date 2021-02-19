@@ -752,6 +752,7 @@ func delInterfacePhysicalOpts(d *schema.ResourceData, m interface{}, jnprSess *N
 	configSet = append(configSet,
 		delPrefix+"aggregated-ether-options",
 		delPrefix+"ether-options 802.3ad",
+		delPrefix+"esi",
 		delPrefix+"gigether-options 802.3ad",
 		delPrefix+"native-vlan-id",
 		delPrefix+"unit 0 family ethernet-switching interface-mode",
