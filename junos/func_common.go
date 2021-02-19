@@ -89,6 +89,7 @@ func validateCIDRNetwork(network string) error {
 
 	return nil
 }
+
 func validateNameObjectJunos(exclude []string, length int) schema.SchemaValidateDiagFunc {
 	return func(i interface{}, path cty.Path) diag.Diagnostics {
 		var diags diag.Diagnostics

@@ -24,6 +24,7 @@ type interfacePhysicalOptions struct {
 	description    string
 	v8023ad        string
 	vlanMembers    []string
+	esi            []map[string]interface{}
 }
 
 func resourceInterfacePhysical() *schema.Resource {
@@ -77,6 +78,42 @@ func resourceInterfacePhysical() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"esi": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"mode": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice([]string{"all-active", "single-active"}, false),
+						},
+						"auto_derive_lacp": {
+							Type:          schema.TypeBool,
+							Optional:      true,
+							ConflictsWith: []string{"esi.0.identifier"},
+						},
+						"df_election_type": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: validation.StringInSlice([]string{"mod", "preference"}, false),
+						},
+						"identifier": {
+							Type:          schema.TypeString,
+							Required:      true,
+							ConflictsWith: []string{"esi.0.auto_derive_lacp"},
+							ValidateFunc: validation.StringMatch(regexp.MustCompile(
+								`^([\\d\\w]{2}:){10}[\\d\\w]{2}$`), "bad format or length"),
+						},
+						"source_bmac": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: validation.IsMACAddress,
+						},
+					},
+				},
 			},
 			"ether802_3ad": {
 				Type:     schema.TypeString,
@@ -424,13 +461,6 @@ func setInterfacePhysical(d *schema.ResourceData, m interface{}, jnprSess *Netco
 		configSet = append(configSet, setPrefix+
 			"aggregated-ether-options lacp "+d.Get("ae_lacp").(string))
 	}
-	if d.Get("ae_lacp_system_id").(string) != "" {
-		if !strings.HasPrefix(d.Get("name").(string), "ae") {
-			return fmt.Errorf("ae_lacp_system_id invalid for this interface")
-		}
-		configSet = append(configSet, setPrefix+
-			"aggregated-ether-options lacp system-id "+d.Get("ae_lacp_system_id").(string))
-	}
 	if d.Get("ae_link_speed").(string) != "" {
 		if !strings.HasPrefix(d.Get("name").(string), "ae") {
 			return fmt.Errorf("ae_link_speed invalid for this interface")
@@ -447,6 +477,9 @@ func setInterfacePhysical(d *schema.ResourceData, m interface{}, jnprSess *Netco
 	}
 	if d.Get("description").(string) != "" {
 		configSet = append(configSet, setPrefix+"description \""+d.Get("description").(string)+"\"")
+	}
+	if err := setIntEsi(setPrefix, d.Get("esi").([]interface{}), m, jnprSess); err != nil {
+		return err
 	}
 	if v := d.Get("name").(string); strings.HasPrefix(v, "ae") {
 		aggregatedCount, err := interfaceAggregatedCountSearchMax(v, "ae-1", v, m, jnprSess)
@@ -486,12 +519,36 @@ func setInterfacePhysical(d *schema.ResourceData, m interface{}, jnprSess *Netco
 	if d.Get("vlan_tagging").(bool) {
 		configSet = append(configSet, setPrefix+"vlan-tagging")
 	}
-
 	if err := sess.configSet(configSet, jnprSess); err != nil {
 		return err
 	}
 
 	return nil
+}
+func setIntEsi(setPrefix string, esiParams []interface{},
+	m interface{}, jnprSess *NetconfObject) error {
+	sess := m.(*Session)
+	configSet := make([]string, 0)
+
+	for _, v := range esiParams {
+		if v != nil {
+			m := v.(map[string]interface{})
+			switch {
+			case m["mode"].(string) != "":
+				configSet = append(configSet, setPrefix+"esi "+m["mode"].(string))
+			case m["auto_derive_lacp"].(bool):
+				configSet = append(configSet, setPrefix+"esi auto-derive lacp")
+			case m["df_election_type"].(string) != "":
+				configSet = append(configSet, setPrefix+"esi df-election-type "+m["df_election_type"].(string))
+			case m["identifier"].(string) != "":
+				configSet = append(configSet, setPrefix+"esi "+m["identifier"].(string))
+			case m["source_bmac"].(string) != "":
+				configSet = append(configSet, setPrefix+"esi source-bmac "+m["source_bmac"].(string))
+			}
+		}
+	}
+
+	return sess.configSet(configSet, jnprSess)
 }
 func readInterfacePhysical(interFace string, m interface{}, jnprSess *NetconfObject) (interfacePhysicalOptions, error) {
 	sess := m.(*Session)
@@ -514,8 +571,6 @@ func readInterfacePhysical(interFace string, m interface{}, jnprSess *NetconfObj
 			}
 			itemTrim := strings.TrimPrefix(item, setLineStart)
 			switch {
-			case strings.HasPrefix(itemTrim, "aggregated-ether-options lacp system-id "):
-				confRead.aeLacpSystemID = strings.TrimPrefix(itemTrim, "aggregated-ether-options lacp system-id ")
 			case strings.HasPrefix(itemTrim, "aggregated-ether-options lacp "):
 				confRead.aeLacp = strings.TrimPrefix(itemTrim, "aggregated-ether-options lacp ")
 			case strings.HasPrefix(itemTrim, "aggregated-ether-options link-speed "):
@@ -528,7 +583,10 @@ func readInterfacePhysical(interFace string, m interface{}, jnprSess *NetconfObj
 				}
 			case strings.HasPrefix(itemTrim, "description "):
 				confRead.description = strings.Trim(strings.TrimPrefix(itemTrim, "description "), "\"")
-
+			case strings.HasPrefix(itemTrim, "esi "):
+				if err := readIntEsi(&confRead, itemTrim); err != nil {
+					return confRead, err
+				}
 			case strings.HasPrefix(itemTrim, "ether-options 802.3ad "):
 				confRead.v8023ad = strings.TrimPrefix(itemTrim, "ether-options 802.3ad ")
 			case strings.HasPrefix(itemTrim, "gigether-options 802.3ad "):
@@ -552,6 +610,37 @@ func readInterfacePhysical(interFace string, m interface{}, jnprSess *NetconfObj
 	}
 
 	return confRead, nil
+}
+func readIntEsi(confRead *interfacePhysicalOptions, item string) error {
+	itemTrim := strings.TrimPrefix(item, "esi ")
+	if len(confRead.esi) == 0 {
+		confRead.esi = append(confRead.esi, map[string]interface{}{
+			"mode":             "",
+			"auto_derive_lacp": false,
+			"df_election_type": "",
+			"identifier":       "",
+			"source_bmac":      "",
+		})
+	}
+	var err error
+	identifier, err := regexp.MatchString(`^([\d\w]{2}:){9}[\d\w]{2}`, itemTrim)
+	if err != nil {
+		return fmt.Errorf("esi_identifier regexp error: %w", err)
+	}
+	switch {
+	case identifier:
+		confRead.esi[0]["identifier"] = itemTrim
+	case itemTrim == "all-active" || itemTrim == "single-active":
+		confRead.esi[0]["mode"] = itemTrim
+	case strings.HasPrefix(itemTrim, "df-election-type "):
+		confRead.esi[0]["df_election_type"] = strings.TrimPrefix(itemTrim, "df-election-type ")
+	case strings.HasPrefix(itemTrim, "source-bmac "):
+		confRead.esi[0]["source_bmac"] = strings.TrimPrefix(itemTrim, "source-bmac ")
+	case itemTrim == "auto-derive lacp":
+		confRead.esi[0]["auto_derive_lacp"] = true
+	}
+
+	return nil
 }
 func delInterfacePhysical(d *schema.ResourceData, m interface{}, jnprSess *NetconfObject) error {
 	sess := m.(*Session)
@@ -668,13 +757,13 @@ func fillInterfacePhysicalData(d *schema.ResourceData, interfaceOpt interfacePhy
 	if tfErr := d.Set("ae_lacp", interfaceOpt.aeLacp); tfErr != nil {
 		panic(tfErr)
 	}
-	if tfErr := d.Set("ae_lacp_system_id", interfaceOpt.aeLacpSystemID); tfErr != nil {
-		panic(tfErr)
-	}
 	if tfErr := d.Set("ae_link_speed", interfaceOpt.aeLinkSpeed); tfErr != nil {
 		panic(tfErr)
 	}
 	if tfErr := d.Set("ae_minimum_links", interfaceOpt.aeMinLink); tfErr != nil {
+		panic(tfErr)
+	}
+	if tfErr := d.Set("esi", interfaceOpt.esi); tfErr != nil {
 		panic(tfErr)
 	}
 	if tfErr := d.Set("description", interfaceOpt.description); tfErr != nil {
