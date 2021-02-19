@@ -151,6 +151,11 @@ func resourceBgpNeighbor() *schema.Resource {
 					},
 				},
 			},
+                        "cluster": {
+                                Type:         schema.TypeString,
+                                Optional:     true,
+                                ValidateFunc: validation.IsIPAddress,
+                        },
 			"damping": {
 				Type:     schema.TypeBool,
 				Optional: true,
