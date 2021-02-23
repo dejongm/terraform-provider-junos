@@ -295,7 +295,7 @@ func readRoutingOptions(m interface{}, jnprSess *NetconfObject) (routingOptionsO
 				}
 				switch {
 				case strings.HasPrefix(itemTrim, "forwarding-table export "):
-					confRead.forwardingTable["export"] = append(confRead.forwardingTable["export"], strings.TrimPrefix(itemTrim, "forwarding-table export "))
+					confRead.forwardingTable[0]["export"] = append(confRead.forwardingTable[0]["export"].([]string), strings.TrimPrefix(itemTrim, "forwarding-table export "))
 				}
 			case strings.HasPrefix(itemTrim, "graceful-restart"):
 				if len(confRead.gracefulRestart) == 0 {
