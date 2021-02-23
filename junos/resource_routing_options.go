@@ -49,6 +49,19 @@ func resourceRoutingOptions() *schema.Resource {
 					},
 				},
 			},
+			"forwarding_table": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"export": {
+							Type:     schema.TypeList,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"graceful_restart": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -63,19 +76,6 @@ func resourceRoutingOptions() *schema.Resource {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							ValidateFunc: validation.IntBetween(120, 10000),
-						},
-					},
-				},
-			},
-			"forwarding_table": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"export": {
-							Type:     schema.TypeList,
-							Optional: true,
 						},
 					},
 				},
@@ -201,6 +201,12 @@ func setRoutingOptions(d *schema.ResourceData, m interface{}, jnprSess *NetconfO
 			configSet = append(configSet, setPrefix+"autonomous-system loops "+strconv.Itoa(asM["loops"].(int)))
 		}
 	}
+	for _, ft := range d.Get("forwarding_table").([]interface{}) {
+		ftM :=ft.(map[string]interface{})
+		for _, v := range ftM["export"].([]interface{}) {
+			configSet = append(configSet, setPrefix+"forwarding-table export "+ v.(string))
+		}
+	}
 	for _, grR := range d.Get("graceful_restart").([]interface{}) {
 		configSet = append(configSet, setPrefix+"graceful-restart")
 		if grR != nil {
@@ -214,13 +220,6 @@ func setRoutingOptions(d *schema.ResourceData, m interface{}, jnprSess *NetconfO
 			}
 		}
 	}
-	for _, ft := range d.Get("forwarding_table").([]interface{}) {
-		ftM :=ft.(map[string]interface{})
-		for _, v := range ftM["export"].([]interface{}) {
-			configSet = append(configSet, setPrefix+"forwarding-table export "+ v.(string))
-		}
-	}
-
 	if err := sess.configSet(configSet, jnprSess); err != nil {
 		return err
 	}
@@ -231,8 +230,8 @@ func setRoutingOptions(d *schema.ResourceData, m interface{}, jnprSess *NetconfO
 func delRoutingOptions(m interface{}, jnprSess *NetconfObject) error {
 	listLinesToDelete := []string{
 		"autonomous-system",
-		"graceful-restart",
 		"forwarding-table",
+		"graceful-restart",
 	}
 	sess := m.(*Session)
 	configSet := make([]string, 0)
@@ -326,10 +325,10 @@ func fillRoutingOptions(d *schema.ResourceData, routingOptionsOptions routingOpt
 	if tfErr := d.Set("autonomous_system", routingOptionsOptions.autonomousSystem); tfErr != nil {
 		panic(tfErr)
 	}
-	if tfErr := d.Set("graceful_restart", routingOptionsOptions.gracefulRestart); tfErr != nil {
+	if tfErr := d.Set("forwarding_table", routingOptionsOptions.forwardingTable); tfErr != nil {
 		panic(tfErr)
 	}
-	if tfErr := d.Set("forwarding_table", routingOptionsOptions.forwardingTable); tfErr != nil {
+	if tfErr := d.Set("graceful_restart", routingOptionsOptions.gracefulRestart); tfErr != nil {
 		panic(tfErr)
 	}
 }
