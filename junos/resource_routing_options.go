@@ -14,6 +14,7 @@ import (
 type routingOptionsOptions struct {
 	autonomousSystem []map[string]interface{}
 	gracefulRestart  []map[string]interface{}
+	forwardingTable  []map[string]interface{}
 }
 
 func resourceRoutingOptions() *schema.Resource {
@@ -62,6 +63,19 @@ func resourceRoutingOptions() *schema.Resource {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							ValidateFunc: validation.IntBetween(120, 10000),
+						},
+					},
+				},
+			},
+			"forwarding_table": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"export": {
+							Type:     schema.TypeList,
+							Optional: true,
 						},
 					},
 				},
@@ -200,6 +214,12 @@ func setRoutingOptions(d *schema.ResourceData, m interface{}, jnprSess *NetconfO
 			}
 		}
 	}
+	for _, ft := range d.Get("forwarding_table").([]interface{}) {
+		ftM :=ft.(map[string]interface{})
+		for _, v := range ftM["export"].([]interface{}) {
+			configSet = append(configSet, setPrefix+"forwarding-table export "+ v.(string))
+		}
+	}
 
 	if err := sess.configSet(configSet, jnprSess); err != nil {
 		return err
@@ -212,6 +232,7 @@ func delRoutingOptions(m interface{}, jnprSess *NetconfObject) error {
 	listLinesToDelete := []string{
 		"autonomous-system",
 		"graceful-restart",
+		"forwarding-table",
 	}
 	sess := m.(*Session)
 	configSet := make([]string, 0)
@@ -266,6 +287,16 @@ func readRoutingOptions(m interface{}, jnprSess *NetconfObject) (routingOptionsO
 				default:
 					confRead.autonomousSystem[0]["number"] = strings.TrimPrefix(itemTrim, "autonomous-system ")
 				}
+			case strings.HasPrefix(itemTrim, "forwarding-table"):
+				if len(confRead.forwardingTable) == 0 {
+					confRead.forwardingTable = append(confRead.forwardingTable, map[string]interface{}{
+						"export":	make([]string, 0),
+					})
+				}
+				switch {
+				case strings.HasPrefix(itemTrim, "forwarding-table export "):
+					confRead.forwardingTable["export"] = append(confRead.forwardingTable["export"], strings.TrimPrefix(itemTrim, "forwarding-table export "))
+				}
 			case strings.HasPrefix(itemTrim, "graceful-restart"):
 				if len(confRead.gracefulRestart) == 0 {
 					confRead.gracefulRestart = append(confRead.gracefulRestart, map[string]interface{}{
@@ -296,6 +327,9 @@ func fillRoutingOptions(d *schema.ResourceData, routingOptionsOptions routingOpt
 		panic(tfErr)
 	}
 	if tfErr := d.Set("graceful_restart", routingOptionsOptions.gracefulRestart); tfErr != nil {
+		panic(tfErr)
+	}
+	if tfErr := d.Set("forwarding_table", routingOptionsOptions.forwardingTable); tfErr != nil {
 		panic(tfErr)
 	}
 }
