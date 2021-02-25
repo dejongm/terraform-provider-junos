@@ -150,7 +150,28 @@ func resourceRoutingOptionsUpdate(ctx context.Context, d *schema.ResourceData, m
 	return append(diagWarns, resourceRoutingOptionsReadWJnprSess(d, m, jnprSess)...)
 }
 func resourceRoutingOptionsDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	return nil
+        sess := m.(*Session)
+        jnprSess, err := sess.startNewSession()
+        if err != nil {
+                return diag.FromErr(err)
+        }
+        defer sess.closeSession(jnprSess)
+        sess.configLock(jnprSess)
+        if err := delRoutingOptions(m, jnprSess); err != nil {
+                sess.configClear(jnprSess)
+
+                return diag.FromErr(err)
+        }
+        var diagWarns diag.Diagnostics
+        warns, err := sess.commitConf("delete resource junos_routing_options", jnprSess)
+        appendDiagWarns(&diagWarns, warns)
+        if err != nil {
+                sess.configClear(jnprSess)
+
+                return append(diagWarns, diag.FromErr(err)...)
+        }
+
+        return diagWarns
 }
 func resourceRoutingOptionsImport(d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
 	sess := m.(*Session)
